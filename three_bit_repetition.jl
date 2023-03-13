@@ -86,29 +86,32 @@ function plot_accuracies(; θ, n)
     f
 end
 
-function joint_pdf(x, y; θ, p)
+# y before x because y "generates" or "causes" x.
+function joint_pdf(y, x; θ, p)
     binomial(3, x)  *
         (θ * p^(3-x) * (1-p)^x)^y  *
             ((1-θ) * p^x * (1-p)^(3-x))^(1-y)
 end
 
-function analytical_voting_accuracy(Ŷ_sampler; θ, p)
-    x_y = Iterators.product(0:3, 0:1)
+y_x_range() = sort(vec(collect(Iterators.product(0:1, 0:3))); by=first)
 
-    sum(x_y) do (x, y)
+function analytical_voting_accuracy(Ŷ_sampler; θ, p)
+    y_x = y_x_range()
+
+    sum(y_x) do (y, x)
         ŷ = Ŷ_sampler(x)
-        accuracy_x_y = Int(ŷ == y)
-        accuracy_x_y * joint_pdf(x, y; θ, p)
+        accuracy_y_x = Int(ŷ == y)
+        accuracy_y_x * joint_pdf(y, x; θ, p)
     end
 end
 
 function analytical_MAP_accuracy(; θ, p)
-    x_y = Iterators.product(0:3, 0:1)
+    y_x = y_x_range()
 
-    sum(x_y) do (x, y)
+    sum(y_x) do (y, x)
         ŷ = ŷ_MAP(x; θ, p)
-        accuracy_x_y = Int(ŷ == y)
-        accuracy_x_y * joint_pdf(x, y; θ, p)
+        accuracy_y_x = Int(ŷ == y)
+        accuracy_y_x * joint_pdf(y, x; θ, p)
     end
 end
 
@@ -139,23 +142,23 @@ function plot_analytical_accuracies(; θ)
     f
 end
 
-# Assume data is an iterator of tuples (x, y).
-function maximum_likelihood_estimator(data)
-    θ̂ = mean(last, data)
-
-    p̂ = mean(data) do (x, y)
-        (1/3)*x - (2/3)*x*y + y
-    end
-
-    θ̂, p̂
-end
-
 function generate_data(n; θ, p)
     map(1:n) do _
         y_ = y(; θ)
         x_ = x(y_; p)
-        x_, y_
+        y_, x_
     end
+end
+
+# Assume data is an iterator of tuples (y, x).
+function maximum_likelihood_estimator(data)
+    θ̂ = mean(first, data)
+
+    p̂ = mean(data) do (y, x)
+        (1/3)*x - (2/3)*x*y + y
+    end
+
+    θ̂, p̂
 end
 
 function make_c(data)
@@ -163,7 +166,7 @@ function make_c(data)
     function c(ψ)
         θ, p = ψ
 
-        sum(data) do (x′, y′)
+        sum(data) do (y′, x′)
             y_ = y(; θ)
             x_ = x(y_; p)
 
