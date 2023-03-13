@@ -138,3 +138,22 @@ function plot_analytical_accuracies(; θ)
 
     f
 end
+
+# Assume data is an iterator of tuples (x, y).
+function maximum_likelihood_estimator(data)
+    θ̂ = mean(last, data)
+
+    p̂ = mean(data) do (x, y)
+        (1/3)*x - (2/3)*x*y + y
+    end
+
+    θ̂, p̂
+end
+
+function generate_data(n; θ, p)
+    map(1:n) do _
+        y_ = y(; θ)
+        x_ = x(y_; p)
+        x_, y_
+    end
+end
