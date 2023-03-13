@@ -43,9 +43,10 @@ function ŷ_MAP(x; θ, p)
     end
 end
 
+p_range() = range(start=0.01, stop=0.99, length=99)
+
 function voting_accuracies(Ŷ_sampler; θ, n=50)
-    ps = range(start=0.01, stop=0.99, length=99)
-    map(ps) do p
+    map(p_range()) do p
         mean(1:n) do _
             y_ = y(; θ)
             x_ = x(y_; p)
@@ -56,8 +57,7 @@ function voting_accuracies(Ŷ_sampler; θ, n=50)
 end
 
 function MAP_accuracies(; θ, n=50)
-    ps = range(start=0.01, stop=0.99, length=99)
-    map(ps) do p
+    map(p_range()) do p
         mean(1:n) do _
             y_ = y(; θ)
             x_ = x(y_; p)
@@ -68,21 +68,73 @@ function MAP_accuracies(; θ, n=50)
 end
 
 function plot_accuracies(; θ, n)
-    ps = range(start=0.01, stop=0.99, length=99)
-
     majority_rule_accuracies = voting_accuracies(ŷ_maj; θ, n)
     minority_rule_accuracies = voting_accuracies(ŷ_min; θ, n)
     MAP_accuracies_ = MAP_accuracies(; θ, n)
 
     f = Figure()
-    ax = Axis(f, title="ŷ_MAP accuracy", xlabel="p", ylabel="accuracy")
+    ax = Axis(f, title="Ŷ estimator accuracies", xlabel="p", ylabel="accuracy")
     f[1, 1] = ax
 
-    lines!(ax, ps, MAP_accuracies_, label="MAP")
-    lines!(ax, ps, majority_rule_accuracies, label="maj")
-    lines!(ax, ps, minority_rule_accuracies, label="min")
+    ps = p_range()
+    lines!(ax, ps, MAP_accuracies_, linewidth=2, label="MAP")
+    lines!(ax, ps, majority_rule_accuracies, linewidth=2, label="majority rule")
+    lines!(ax, ps, minority_rule_accuracies, linewidth=2, label="minority rule")
 
-    # ylims!(ax, (-0.1, 1.1))
+    f[1, 2] = Legend(f, ax, framevisible = false)
+
+    f
+end
+
+function joint_pdf(x, y; θ, p)
+    binomial(3, x)  *
+        (θ * p^(3-x) * (1-p)^x)^y  *
+            ((1-θ) * p^x * (1-p)^(3-x))^(1-y)
+end
+
+function analytical_voting_accuracy(Ŷ_sampler; θ, p)
+    x_y = Iterators.product(0:3, 0:1)
+
+    sum(x_y) do (x, y)
+        ŷ = Ŷ_sampler(x)
+        accuracy_x_y = Int(ŷ == y)
+        accuracy_x_y * joint_pdf(x, y; θ, p)
+    end
+end
+
+function analytical_MAP_accuracy(; θ, p)
+    x_y = Iterators.product(0:3, 0:1)
+
+    sum(x_y) do (x, y)
+        ŷ = ŷ_MAP(x; θ, p)
+        accuracy_x_y = Int(ŷ == y)
+        accuracy_x_y * joint_pdf(x, y; θ, p)
+    end
+end
+
+function analytical_voting_accuracies(Ŷ_sampler; θ)
+    map(p -> analytical_voting_accuracy(Ŷ_sampler; θ, p), p_range())
+end
+
+function analytical_MAP_accuracies(; θ)
+    map(p -> analytical_MAP_accuracy(; θ, p), p_range())
+end
+
+function plot_analytical_accuracies(; θ)
+    majority_rule_accuracies = analytical_voting_accuracies(ŷ_maj; θ)
+    minority_rule_accuracies = analytical_voting_accuracies(ŷ_min; θ)
+    MAP_accuracies = analytical_MAP_accuracies(; θ)
+
+    f = Figure()
+    ax = Axis(f, title="Analytical Ŷ estimator accuracies", xlabel="p", ylabel="accuracy")
+    f[1, 1] = ax
+
+    ps = p_range()
+    lines!(ax, ps, MAP_accuracies, linewidth=2, label="MAP")
+    lines!(ax, ps, majority_rule_accuracies, linewidth=2, label="majority rule")
+    lines!(ax, ps, minority_rule_accuracies, linewidth=2, label="minority rule")
+
+    f[1, 2] = Legend(f, ax, framevisible = false)
 
     f
 end
