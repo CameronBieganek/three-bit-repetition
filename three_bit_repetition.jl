@@ -157,3 +157,36 @@ function generate_data(n; θ, p)
         x_, y_
     end
 end
+
+function make_c(data)
+    # Sampler for the random variable C.
+    function c(ψ)
+        θ, p = ψ
+
+        sum(data) do (x′, y′)
+            y_ = y(; θ)
+            x_ = x(y_; p)
+
+            (x_ - x′)^2 + (y_ - y′)^2
+        end
+    end
+end
+
+data = generate_data(1000; θ=0.4, p=0.3)
+c = make_c(data)
+
+m = StochasticModel(c, [0.5, 0.5])
+
+iterations = 2000
+θ̂_trace = Float64[]
+p̂_trace = Float64[]
+o = Adam()
+s = Optimisers.setup(o, m)
+
+for i in 1:iterations
+    Optimisers.update!(s, m, stochastic_gradient(m))
+    push!(θ̂_trace, m.p[1])
+    push!(p̂_trace, m.p[2])
+end
+
+# Not working! :(
