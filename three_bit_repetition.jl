@@ -16,6 +16,13 @@ function x(y; p)
     rand(Binomial(3, p_effective))
 end
 
+# Sample from the joint distribution of Y and X.
+function y_x(; θ, p)
+    y_ = y(; θ)
+    x_ = x(y_; p)
+    y_, x_
+end
+
 # Samplers for the estimators (random variables) Ŷ_maj and Ŷ_min.
 ŷ_maj(x) = Int(x > 1.5)
 ŷ_min(x) = Int(x < 1.5)
@@ -49,10 +56,9 @@ p_range() = range(start=0.01, stop=0.99, length=99)
 function voting_accuracies(Ŷ_sampler; θ, n=50)
     map(p_range()) do p
         mean(1:n) do _
-            y_ = y(; θ)
-            x_ = x(y_; p)
-            ŷ_ = Ŷ_sampler(x_)
-            Int(ŷ_ == y_)
+            y, x = y_x(; θ, p)
+            ŷ = Ŷ_sampler(x)
+            Int(ŷ == y)
         end
     end
 end
@@ -60,10 +66,9 @@ end
 function MAP_accuracies(; θ, n=50)
     map(p_range()) do p
         mean(1:n) do _
-            y_ = y(; θ)
-            x_ = x(y_; p)
-            ŷ_ = ŷ_MAP(x_; θ, p)
-            Int(ŷ_ == y_)
+            y, x = y_x(; θ, p)
+            ŷ = ŷ_MAP(x; θ, p)
+            Int(ŷ == y)
         end
     end
 end
@@ -143,14 +148,8 @@ function plot_analytical_accuracies(; θ)
     f
 end
 
-# Generates an iterator of tuples (y, x).
-function generate_data(; n, θ, p)
-    map(1:n) do _
-        y_ = y(; θ)
-        x_ = x(y_; p)
-        y_, x_
-    end
-end
+# Create an iterator of samples (y, x).
+generate_data(; n, θ, p) = (y_x(; θ, p) for _ in 1:n)
 
 function maximum_likelihood_estimator(data)
     θ̂ = mean(first, data)
@@ -193,9 +192,6 @@ function make_loss(data; m)
     end
 end
 
-data = generate_data(n=1000, θ=0.5, p=0.2)
-θ̂_MLE, p̂_MLE = maximum_likelihood_estimator(data)
-
 function plot_loss(data)
     loss = make_loss(data; m=length(data))
 
@@ -217,3 +213,6 @@ function plot_loss(data)
     f[1, 2] = Legend(f, ax, framevisible = false)
     f
 end
+
+data = generate_data(n=1000, θ=0.5, p=0.2)
+θ̂_MLE, p̂_MLE = maximum_likelihood_estimator(data)
