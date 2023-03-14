@@ -1,4 +1,5 @@
 
+using StatsBase
 using Distributions
 using StochasticAD
 using Optimisers
@@ -142,7 +143,8 @@ function plot_analytical_accuracies(; θ)
     f
 end
 
-function generate_data(n; θ, p)
+# Generates an iterator of tuples (y, x).
+function generate_data(; n, θ, p)
     map(1:n) do _
         y_ = y(; θ)
         x_ = x(y_; p)
@@ -150,7 +152,6 @@ function generate_data(n; θ, p)
     end
 end
 
-# Assume data is an iterator of tuples (y, x).
 function maximum_likelihood_estimator(data)
     θ̂ = mean(first, data)
 
@@ -161,35 +162,58 @@ function maximum_likelihood_estimator(data)
     θ̂, p̂
 end
 
-function make_c(data)
-    # Sampler for the random variable C.
-    function c(ψ)
+function make_empirical_pdf(data)
+    cm = countmap(data)
+    n = length(data)
+
+    function empirical_pdf(y, x)
+        # If (y, x) is not in the count map dict, that means
+        # that there were zero counts for that value in the
+        # data set, hence the default of 0 in `get`.
+        count = get(cm, (y, x), 0)
+        count/n
+    end
+end
+
+function make_loss(data; m)
+    observed_pdf = make_empirical_pdf(data)
+
+    # Sampler for the loss random variable.
+    function loss(ψ)
         θ, p = ψ
 
-        sum(data) do (y′, x′)
-            y_ = y(; θ)
-            x_ = x(y_; p)
+        # `data` is the observed data, and `samples` is generated
+        # data that we would like to match to the observed data.
+        samples = generate_data(; n=m, θ, p)
+        sampled_pdf = make_empirical_pdf(samples)
 
-            (x_ - x′)^2 + (y_ - y′)^2
+        sum(y_x_range()) do (y, x)
+            abs(sampled_pdf(y, x) - observed_pdf(y, x))
         end
     end
 end
 
-data = generate_data(1000; θ=0.4, p=0.3)
-c = make_c(data)
+data = generate_data(n=1000, θ=0.5, p=0.2)
+θ̂_MLE, p̂_MLE = maximum_likelihood_estimator(data)
 
-m = StochasticModel(c, [0.5, 0.5])
+function plot_loss(data)
+    loss = make_loss(data; m=length(data))
 
-iterations = 2000
-θ̂_trace = Float64[]
-p̂_trace = Float64[]
-o = Adam()
-s = Optimisers.setup(o, m)
+    θs = 0.1:0.1:0.5
+    ps = p_range()
 
-for i in 1:iterations
-    Optimisers.update!(s, m, stochastic_gradient(m))
-    push!(θ̂_trace, m.p[1])
-    push!(p̂_trace, m.p[2])
+    mean_loss = map(θs) do θ
+        [mean(loss([θ, p]) for _ in 1:1000) for p in ps]
+    end
+
+    f = Figure()
+    ax = Axis(f, title="Mean Loss", xlabel="p", ylabel="loss")
+    f[1, 1] = ax
+
+    foreach(θs, mean_loss) do θ, loss
+        lines!(ax, ps, loss, linewidth=2, label="θ=$θ")
+    end
+
+    f[1, 2] = Legend(f, ax, framevisible = false)
+    f
 end
-
-# Not working! :(
