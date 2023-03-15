@@ -2,7 +2,7 @@
 using StatsBase
 using Distributions
 using StochasticAD
-using Optimisers
+# using Optimisers  # StochasticAD can't take the derivative of my `loss` function.
 using CairoMakie
 
 
@@ -73,13 +73,13 @@ function MAP_accuracies(; θ, n=50)
     end
 end
 
-function plot_accuracies(; θ, n)
+function plot_accuracies(path; θ, n)
     majority_rule_accuracies = voting_accuracies(ŷ_maj; θ, n)
     minority_rule_accuracies = voting_accuracies(ŷ_min; θ, n)
     MAP_accuracies_ = MAP_accuracies(; θ, n)
 
     f = Figure()
-    ax = Axis(f, title="Ŷ estimator accuracies", xlabel="p", ylabel="accuracy")
+    ax = Axis(f, title="Ŷ estimator accuracies, θ=$θ", xlabel="p", ylabel="accuracy")
     f[1, 1] = ax
 
     ps = p_range()
@@ -89,7 +89,7 @@ function plot_accuracies(; θ, n)
 
     f[1, 2] = Legend(f, ax, framevisible = false)
 
-    f
+    save(path, f; px_per_unit=2)
 end
 
 # y before x because y "generates" or "causes" x.
