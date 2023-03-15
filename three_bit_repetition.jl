@@ -129,13 +129,13 @@ function analytical_MAP_accuracies(; θ)
     map(p -> analytical_MAP_accuracy(; θ, p), p_range())
 end
 
-function plot_analytical_accuracies(; θ)
+function plot_analytical_accuracies(path; θ)
     majority_rule_accuracies = analytical_voting_accuracies(ŷ_maj; θ)
     minority_rule_accuracies = analytical_voting_accuracies(ŷ_min; θ)
     MAP_accuracies = analytical_MAP_accuracies(; θ)
 
     f = Figure()
-    ax = Axis(f, title="Analytical Ŷ estimator accuracies", xlabel="p", ylabel="accuracy")
+    ax = Axis(f, title="Analytical Ŷ estimator accuracies, θ=$θ", xlabel="p", ylabel="accuracy")
     f[1, 1] = ax
 
     ps = p_range()
@@ -145,7 +145,7 @@ function plot_analytical_accuracies(; θ)
 
     f[1, 2] = Legend(f, ax, framevisible = false)
 
-    f
+    save(path, f; px_per_unit=2)
 end
 
 # Create an iterator of samples (y, x).
