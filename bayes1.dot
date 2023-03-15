@@ -18,7 +18,7 @@ digraph {
     }
 
     subgraph cluster_2 {
-        label="j ∈ {1, ..., m}";
+        label="j ∈ {1, ..., n}";
         Z_j; W_j;
     }
 }
