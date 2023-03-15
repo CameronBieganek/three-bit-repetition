@@ -1,0 +1,26 @@
+
+digraph {
+    Y_i[label=<Y<SUB>i</SUB>>];
+    X_i[label=<X<SUB>i</SUB>>];
+    Z_j[label=<Z<SUB>j</SUB>>];
+    W_j[label=<W<SUB>j</SUB>>];
+    θ_1[label=<θ<SUB>1</SUB>>];
+    θ_2[label=<θ<SUB>2</SUB>>];
+
+    θ_1 -> Y_i;
+    θ_2 -> Z_j;
+    p -> X_i;
+    p -> W_j;
+    Y_i -> X_i;
+    Z_j -> W_j;
+
+    subgraph cluster_1 {
+        label="i ∈ {1, ..., n}";
+        Y_i; X_i;
+    }
+
+    subgraph cluster_2 {
+        label="j ∈ {1, ..., m}";
+        Z_j; W_j;
+    }
+}
